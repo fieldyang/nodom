@@ -61,7 +61,7 @@
             exprStr = exprStr.trim();
             while((r = reg.exec(exprStr)) !== null){
                 if(r.index>ind){
-                    var s = exprStr.substring(ind,r.index).trim();
+                    var s = exprStr.substring(ind,r.index);
                     if(!DD.isEmpty(s)){
                         result.push({
                             type:'string',

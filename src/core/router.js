@@ -248,8 +248,6 @@
 					}else{
 						me.links = links;
 					}
-					
-					// return false;
 				}
 			}else{
 				me.links = links;
@@ -258,7 +256,7 @@
 			//设置当前path
 			me.currentPath = path;
 			
-			if(me.links.length>0){
+			if(me.links.length===0){
 				throw DD.Error.handle('notexist1',DD.words.route,path);
 			}
 			//设置加载状态

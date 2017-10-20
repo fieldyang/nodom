@@ -1456,7 +1456,7 @@ DD.config = {
             exprStr = exprStr.trim();
             while((r = reg.exec(exprStr)) !== null){
                 if(r.index>ind){
-                    var s = exprStr.substring(ind,r.index).trim();
+                    var s = exprStr.substring(ind,r.index);
                     if(!DD.isEmpty(s)){
                         result.push({
                             type:'string',
@@ -4559,8 +4559,6 @@ DD.Error = {
 					}else{
 						me.links = links;
 					}
-					
-					// return false;
 				}
 			}else{
 				me.links = links;
@@ -4569,7 +4567,7 @@ DD.Error = {
 			//设置当前path
 			me.currentPath = path;
 			
-			if(me.links.length>0){
+			if(me.links.length===0){
 				throw DD.Error.handle('notexist1',DD.words.route,path);
 			}
 			//设置加载状态
