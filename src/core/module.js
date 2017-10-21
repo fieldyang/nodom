@@ -207,6 +207,8 @@
             if(DD.isObject(config.data)){
                 mdlData = config.data;
             }else if(!DD.isEmpty(config.dataUrl)){      //加载数据
+                //清掉数据
+                me.setData({});
                 reqCnt++;
                 DD.request({
                     url:config.dataUrl,

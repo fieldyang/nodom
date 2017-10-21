@@ -10,10 +10,10 @@
 
 (function(){	
 	DD.Renderer = {
-		waitList : [], 		  //待渲染列表
+		waitList : [], 		  	//待渲染列表
 		/**
 		 * 添加到渲染列表
-		 * @param module 			模块
+		 * @param module 		模块
 		 */
 		add:function(module){
 			var me = this;
@@ -51,9 +51,9 @@
 			//调用队列渲染
 			for(var i=0;i<me.waitList.length;i++){
 				var m = me.waitList[i];
-				if(m.render()){
-					me.waitList.splice(i--,1);
-				}
+				//如果没渲染成功，则追加到最后，等待下次渲染
+				me.waitList.splice(i--,1);
+				m.render();
 			}
 			
 		}

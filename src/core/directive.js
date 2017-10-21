@@ -391,7 +391,7 @@
     function domodel(directive){
         var view = this;
         //清掉之前的数据
-        view.$model = null;
+        view.$model.data = null;
         view.$model = view.$getData();
     }
 
@@ -405,7 +405,8 @@
         if(DD.isEmpty(directive)){
             directive = view.$getDirective('repeat');
         }
-        var model = view.$model;
+        view.$model.data = null;
+        var model = view.$getData();
         //如果没有数据，则不进行渲染
         if(model.data === undefined || !DD.isArray(model.data) || model.data.length === 0){
             return;

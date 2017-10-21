@@ -408,7 +408,7 @@
 		}else{
 			pview = DD.App.view;
 		}
-		var routeEl = DD.get("[href='"+ me.getFullPath() +"']",false,pview);
+		var routeEl = DD.get("[data-path='"+ me.getFullPath() +"']",false,pview);
 		if(routeEl && routeEl.$routeConfig && routeEl.$routeConfig.active){
 			changeActive(routeEl);
 		}
@@ -600,10 +600,8 @@
                 return;
             }
 
-			// 设置href
-			if(view.tagName.toLowerCase() === 'a'){
-				DD.attr(view,'href',value);
-			}
+			// 设置path
+			DD.attr(view,'data-path',value);
 
 			view.$routeConfig={
 				path:value,
@@ -617,14 +615,12 @@
 				view:view,
 				eventName:'click',
 				handler:function(e,data,v){
-					//阻止href跳转
-		        	e.preventDefault();
-		        	if(v.$routeConfig && v.$routeConfig.active){
+					if(v.$routeConfig && v.$routeConfig.active){
 		        		changeActive(v);
 			   		}else{
 			   			DD.Router.start(view.$routeConfig['path']);
 			   		}
-		        }
+			    }
 			});
 		},
 		handler:function(){
