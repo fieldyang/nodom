@@ -916,7 +916,7 @@ var DD = {
                 css.rel = 'stylesheet'; 
                 // 保留script标签的path属性
                 css.href = path;
-                head.append(css);
+                head.appendChild(css);
                 if(DD.isFunction(callback)){
                     callback();
                 }

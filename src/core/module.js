@@ -35,7 +35,6 @@
         me.onReceive = config.onReceive;
         me.onInit = config.onInit;    
         me.fromModules = config.fromModules;
-        
         me.onRender = config.onRender;
         me.onFirstRender = config.onFirstRender;
         me.initConfig = DD.merge({delayInit:false},config);
@@ -46,6 +45,7 @@
                 me.methodFactory.add(item,config.methods[item]);
             });
         }
+
         // 删除已处理的方法集
         delete config.methods;
         //初始化module
@@ -66,9 +66,8 @@
         var me = this;
         var config = me.initConfig;
         //设置父module
-        if(config.parent instanceof Module){
-            me.parent = config.parent;
-        }
+        me.parent = config.parent;
+        
         
         //创建virtualDom
         me.virtualDom = DD.newEl('div');
@@ -79,11 +78,13 @@
             //如果为字符串，则需要从模块工厂获取
             if(DD.isString(me.parent)){
                 var mn = me.parent;
-                me.parent = DD.moduleFactory.get(mn);
+                me.parent = DD.Module.get(mn);
                 if(!me.parent){
                     throw DD.Error.handle('notexist1',DD.words.module,mn);
                 }
             }
+            // 加入到父模块的子模块集合
+            me.parent.modules.push(me);
             
             if(me.parent.$rendered){
                 pview = me.parent.view;
@@ -111,10 +112,10 @@
             //编译
             me.compile();
             DD.Renderer.add(me);
-            //有数据，添加到渲染列表
-            if(data){
-                new DD.Model({data:data,module:me});
-            }
+
+            //数据为空，则使用用空对象
+            data = data || {};
+            new DD.Model({data:data,module:me});
             
             //子模块初始化
             if(DD.isArray(config.modules)){
@@ -251,75 +252,19 @@
     Module.prototype.compile = function(dstView){
         var me = this;
         var cls;
-        //ddr 是否有module class存在，则需要先检查class是否存在virtualDom，如果存在，则不用再编译，否则把模块的virturalDom编译了给class
+        //是否有module class存在，则需要先检查class是否存在virtualDom，如果存在，则不用再编译，否则把模块的virturalDom编译了给class
         if(me.className && (cls = DD.Module.getClass(me.className))!==undefined && cls.virtualDom){
             me.virtualDom = cls.virtualDom;
             return;
         }
 
         //编译
-        if(dstView){
-            compileEl(dstView);
-        }else{
-            var vd = compileEl(me.virtualDom);
-            if(cls !== undefined){
-                cls.virtualDom = vd;
-            }
-            me.compiled = true;
+        var vd = DD.Compiler.compile(me.virtualDom,me);
+        //如果存在class，则设置class的virtualDom
+        if(cls){
+            cls.virtualDom = vd;
         }
-        
-        /**
-         * 编译单个element
-         * @param el    待编译的element
-         * @return      编译后的element
-         */
-        function compileEl(el){
-            //扩展element方法
-            DD.merge(el,DD.extendElementConfig);
-            // 指定模块
-            el.$module = me;
-            
-            //处理属性指令
-            DD.getAttrsByValue(el,/\{\{.+?\}\}/).forEach(function(attr){
-                me.needData = true;
-                // 保存带表达式的属性
-                el.$attrs[attr.name]=DD.Expression.initExpr(attr.value,el);
-            });
-            
-            //初始化指令集
-            DD.Directive.initViewDirectives(el);
-            if(el.$hasDirective('model')){
-                me.needData = true;
-            }
-            
-            //遍历childNodes进行指令、表达式、路由的处理
-            var nodes = el.childNodes;
-            for(var i=0;i<nodes.length;i++){
-                var node = nodes[i];
-                switch(node.nodeType){
-                    case Node.TEXT_NODE:        // 文本
-                        // 处理文本表达式
-                        if(node.textContent.trim() !== ''){
-                            if(/\{\{.+\}\}?/.test(node.textContent)){
-                                me.needData = true;
-                                //处理表达式
-                                node.$exprs = DD.Expression.initExpr(node.textContent,me);
-                                //textcontent 清空
-                                node.textContent = ' ';
-                            }    
-                        }
-                        
-                        break;
-                    case Node.COMMENT_NODE:     // 注释，需要移除
-                        el.removeChild(node);
-                        i--;
-                        break;
-                    default:                    // 标签 Node.ELEMENT_NODE
-                        compileEl(node);
-                }
-            }
-            return el;
-        }
+        me.compiled = true;
     }
     /**
      * 渲染
@@ -330,29 +275,35 @@
         var me = this;
         //未编译，不渲染
         if(!me.compiled){
-            return false;
+            return;
         }
-        // 获取渲染容器
+
+        //父模块未渲染，不进行渲染
+        if(me.parent && !me.parent.rendered){
+            return;
+        }
+        //获取渲染容器
         getView(me);
-        //找不到view，返回
-        if(!DD.isEl(me.view)){
-            return true;
+        //view不存在，不渲染
+        if(!me.view){
+            return;
         }
         //设置模块view为view
         if(!me.view.$isView){
             DD.merge(me.view,DD.extendElementConfig);
             me.view.$isView = true;
         }
-        if(me.needData && !me.model){
-            return false;
-        }
 
+        //无数据不渲染
+        if(me.needData && !me.model){
+            return;
+        }
         //设置清除upd标志
         if(me.view.childNodes.length === 0){ //没渲染过，从virtualDom渲染
             //用克隆节点操作，不影响源节点
             var cloneNode = DD.cloneNode(me.virtualDom);
             //把cloneNode下的所有节点渲染到view
-            renderDom(cloneNode,true);
+            DD.Renderer.renderView(cloneNode,me);
             //把clone后的子节点复制到模块的view
             DD.transChildren(cloneNode,me.view);
             me.view.$containModule = true;  //设置view为module容器
@@ -362,8 +313,10 @@
             }
             //设置已渲染标志
             me.rendered = true;
+            //首次渲染，需要渲染子模块
+            me.renderChildren = true;
         }else{  //渲染过，从view渲染
-            renderDom(me.view,true);
+            DD.Renderer.renderView(me.view,me);
         }
         //调用onRender事件
         if(DD.isFunction(me.onRender)){
@@ -373,15 +326,18 @@
         if(me.model){
             me.model.clean();
         }
+        
         //渲染子节点
         if(me.renderChildren){
             me.modules.forEach(function(m){
                 m.renderChildren = true;
                 m.render();
             });
-            //删除渲染子节点标志
-            delete me.renderChildren;
         }
+        
+        //删除渲染子节点标志
+        delete me.renderChildren;
+        
         //删除强制渲染标志
         delete me.forceRender;
         //路由链式加载
@@ -394,123 +350,7 @@
                 },0
             );
         }
-        //渲染成功
-        return true;
         
-        /**
-         * 渲染virtual dom
-         * @param node      待渲染节点
-         * @param isRoot    是否为根节点
-         */
-        function renderDom(node,isRoot){
-            //判断并设置routerview
-            if(node.$isRouterView === true){
-                me.routerView = node;
-            }
-            //如果不需要数据或者为子模块，不渲染
-            if(node.needData === false || node !== me.view && node.$containModule){
-                return;
-            }
-            //设置$module
-            if(!isRoot){
-                node.$module = me;    
-            }
-            
-            if(node.$isView){
-                //未渲染，则进行事件初始化
-                if(!node.$rendered && DD.isEl(node)){
-                    initEvents(node);
-                }
-                var model = node.$getData();
-                //有数据才进行渲染
-                if(model.data && model.data.$changed || node.$forceRender || me.forceRender){
-                    if(DD.isEl(node)){
-                        //增加渲染过程变量
-                        var directives = [];
-                        DD.getOwnProps(node.$attrs).forEach(function(attr){
-                            if(typeof(node.$attrs[attr]) === 'function'){
-                                return;
-                            }
-                            var r = DD.Expression.handle(me,node.$attrs[attr],model);
-                            //如果字段没修改且没有设置强制渲染，则不设置属性
-                            if(!r[0] && !node.$forceRender){
-                                return;
-                            }
-                            var v = r[1];
-                            //指令属性不需要设置属性值
-                            if(attr.substr(0,2) === 'x-'){
-                                directives.push({
-                                    name:attr.substr(2),
-                                    value:v
-                                });
-                            }else {  //普通属性
-                                DD.attr(node,attr,v);
-                            }
-                        });
-                        //指令属性修改后，需要重新初始化指令
-                        if(directives.length > 0){
-                            DD.Directive.initViewDirective(node,directives);
-                        }
-                    }
-                    //处理指令
-                    if(node.$directives.length>0){
-                        DD.Directive.handle(node);     
-                    }
-                }
-                //渲染子节点
-                //隐藏节点不渲染子节点
-                // var showDir = node.$getDirective('show');
-                // if((!showDir || showDir.yes) && node.childNodes){
-                    for(var i=0;i<node.childNodes.length;i++){
-                        //子element或 自己的data修改后的文本子节点
-                        if(node.$isView || model.data.$changed){
-                            renderDom(node.childNodes[i]);    
-                        }
-                    }
-                // }
-                //设置渲染标志
-                node.$rendered = true;
-                //删除forceRender属性
-                delete node.$forceRender;
-            }else if(me.model && me.model.data && node.nodeType === Node.TEXT_NODE && node.$exprs){
-                var model = node.parentNode.$getData();
-                //model changed 或 forcerender 才进行渲染
-                if(model.data && model.data.$changed || node.parentNode.$forceRender || me.forceRender){
-                    var r = DD.Expression.handle(me,node.$exprs,model); 
-                    //数据未修改，forceRender为false，不渲染
-                    if(!r[0] && !node.parentNode.$forceRender && !me.forceRender){
-                        return;
-                    }
-
-                    //清除之前渲染的节点
-                    var bn = node.nextSibling;
-                    for(;bn && bn.$genNode;){
-                        var n = bn.nextSibling;
-                        DD.remove(bn);
-                        bn = n;
-                    }
-                    var hasEl = /[(\&lt;.*?\&gt;)(\<.*?\>)]/.test(r[1]);
-                    //如果只是text，则添加文本，否则编译后追加到textnode后面
-                    if(!hasEl){
-                        node.textContent = r[1];
-                    }else{
-                        var div = document.createElement('div');
-                        div.innerHTML = r[1];
-                        // 新增el，需要编译
-                        me.compile(div);
-                        var frag = document.createDocumentFragment();
-                        for(var i=0;i<div.childNodes.length;){
-                            var n = div.childNodes[i];
-                            n.$genNode = true;
-                            frag.appendChild(div.childNodes[i]);
-                        }
-                        DD.insertAfter(frag,node);
-                    }
-                }
-            }
-            return node;
-        }
-
         /**
          * 获取view
          */
@@ -530,42 +370,6 @@
                 }
             }
             return module.view;
-        }
-
-        /**
-         * 初始化事件
-         */
-        function initEvents(el){
-            var attrs = DD.getAttrs(el,/^e-/);
-            if(attrs.length>0){
-                attrs.forEach(function(attr){
-                    //处理管道
-                    var arr = attr.value.split(':');
-                    var handler = me.methodFactory.get(arr[0]);
-                    //如果不存在事件方法，则不处理，可能是子模块方法，留给子模块处理
-                    if(!handler){
-                        return;
-                    }
-                    //去掉e-前缀
-                    var ename = attr.name.substr(2);
-                    
-                    //处理多个参数
-                    var param = {
-                        view:el,
-                        eventName:ename,
-                        handler:handler
-                    };
-                    if(arr.length>1){
-                        for(var i=1;i<arr.length;i++){
-                            param[arr[i]] = true;
-                        }
-                    }
-                    //新建事件并绑定
-                    new DD.Event(param);
-                    //移除事件属性
-                    el.removeAttribute(attr.name);
-                });
-            }
         }
     }
     /**
@@ -587,9 +391,7 @@
             throw DD.Error.handle('invoke1','addModule',0,'object');
         }
         config.parent = me;
-        var m = DD.Module.newInstance(config);
-        me.modules.push(m);
-        return m;
+        return DD.Module.create(config);
     }
     
     /**
@@ -724,7 +526,7 @@
          *          className:  类名 
          * @return 新建的模块
          */
-        newInstance:function(config){
+        create:function(config){
             var me = this;
             //判断该名字是否存在
             if(config.name && me.get(config.name)){
@@ -761,10 +563,10 @@
         createModule:function(config){
             if(DD.isArray(config)){
                 config.forEach(function(cfg){
-                    DD.Module.newInstance(cfg);
+                    DD.Module.create(cfg);
                 })
             }else{
-                return DD.Module.newInstance(config);
+                return DD.Module.create(config);
             }
         },
         defineModule:function(config){

@@ -180,8 +180,9 @@
         /**
          * 指令处理
          * @param view  视图
+         * @param model model
          */
-        handle : function(view){
+        handle : function(view,model){
             var me = this;
             var el = view;
             var removeArr = [];
@@ -189,7 +190,7 @@
                 var dname = item.name;
                 var d = me.directives[dname];
                 if(d !== undefined && DD.isFunction(d.handler)){
-                    d.handler.call(view,item);
+                    d.handler.call(view,item,model);
                     //只执行一遍，则需要移除，记录删除指令位置
                     if(d.once === true){
                         removeArr.push(view.$directives.indexOf(item));
@@ -388,25 +389,28 @@
      * 执行model指令
      * @param directive 指令
      */
-    function domodel(directive){
+    function domodel(directive,model){
         var view = this;
-        //清掉之前的数据
-        view.$model.data = null;
-        view.$model = view.$getData();
+        if(!model){
+            //清掉之前的数据
+            view.$model.data = null;
+            view.$model = view.$getData();    
+        }
     }
 
     /**
      * repeat 指令
      * @param directive 指令
      */
-    function dorepeat(directive){
+    function dorepeat(directive,model){
         var view = this;
         
         if(DD.isEmpty(directive)){
             directive = view.$getDirective('repeat');
         }
-        view.$model.data = null;
-        var model = view.$getData();
+        if(!model){
+            model = view.$getData();
+        }
         //如果没有数据，则不进行渲染
         if(model.data === undefined || !DD.isArray(model.data) || model.data.length === 0){
             return;
@@ -468,16 +472,20 @@
      * if指令执行
      * @param directive   指令，可为空
      */
-    function doif(directive){
+    function doif(directive,model){
         var view = this;
         if(DD.isEmpty(directive)){
             directive = view.$getDirective('if');
         }
-        var model = view.$getData();
+        if(!model){
+            model = view.$getData();
+        }
+        //设置forceRender
+        var fr = view.$forceRender || view.$module.forceRender;
         if(DD.isArray(directive.value)){
             var re = DD.Expression.handle(view.$module,directive.value,model);
             //无修改，不执行
-            if(!re[0] && !view.$forceRender){
+            if(!re[0] && !fr){
                 return;
             }
             var r = re[1];
@@ -525,7 +533,7 @@
      * 执行class 指令
      * @param directive 指令
      */
-    function doclass(directive){
+    function doclass(directive,model){
         var view = this;
         //只针对element处理
         if(view.nodeType !== Node.ELEMENT_NODE){
@@ -534,14 +542,17 @@
         if(DD.isEmpty(directive)){
             directive = view.$getDirective('class');
         }
-        var model = view.$getData();
         var obj = directive.value;
-
+        if(!model){
+            model = view.$getData();
+        }
+        //forceRender
+        var fr = view.$forceRender || view.$module.forceRender;
         DD.getOwnProps(obj).forEach(function(key){
             var r = obj[key];
             if(DD.isArray(obj[key])){
                 var re = DD.Expression.handle(view.$module,obj[key],model);
-                if(!re[0] && !view.$forceRender){
+                if(!re[0] && !fr){
                     return;
                 }
                 r = re[1];
@@ -564,13 +575,17 @@
      * 执行show指令
      * @param directive 指令 
      */
-    function doshow(directive){
+    function doshow(directive,model){
         var view = this;
+        
         if(DD.isEmpty(directive)){
             directive = view.$getDirective('show');
         }
+        if(!model){
+            model = view.$getData();
+        }
+        
         var res = render();
-
         if(!directive.display){ //执行第一次
             setTimeout(function(){
                 //延迟获取display样式，因为未显示的时候display为空字符串
@@ -597,19 +612,18 @@
             if(directive.yes){
                 DD.css(view,'display',directive.display); 
                 //设置强制渲染
-                // view.$setForceRender(true);
+                view.$setForceRender(true);
             }else{
                 DD.css(view,'display','none');    
             }
         }
         
         function render(){
-            var model = view.$getData();
             //执行表达式对象
             var r = true;
             if(DD.isArray(directive.value)){
                 var re = DD.Expression.handle(view.$module,directive.value,model);
-                if(!re[0] && !view.$forceRender){
+                if(!re[0] && !view.$forceRender && !view.$module.forceRender){
                     return false;
                 }
                 r = re[1];    
@@ -640,7 +654,7 @@
      * 执行field指令
      * @param directive 指令 
      */
-    function dofield(directive){
+    function dofield(directive,model){
         var view = this;
         var tp = view.type;
         var tgname = view.tagName.toLowerCase();
@@ -648,10 +662,14 @@
             return;
         }
             
-        var model = view.$getData();
+        if(!model){
+            model = view.$getData();
+        }
+        
+        var fr = view.$forceRender || view.$module.forceRender;
         var re = model.data.$get(directive.value);
         //对应字段无修改，则不执行
-        if(!re[0] && !view.$forceRender){
+        if(!re[0] && !fr){
             return;
         }
         var v = re[1];
@@ -680,6 +698,4 @@
             },0);
         }
     }
-
-    
 }());

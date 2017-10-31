@@ -125,36 +125,41 @@
 					}
 				}
 				if(r1){
+					//路由入加载链
+					links.push(r1);
 					//去掉路由路径中的空格
 					var path1 = path.substr(r1.path.length);
 					//不要第一根横线来split
 					var arr = path1.substr(1).split('/');
-					// 查找参数匹配
-					if(r1.type === 'param'){
-						var len = arr.length<=r1.paramNames.length?arr.length:r1.paramNames.length;
-						var data = {};
-						// 取参数
-						for(var i=0;i<len;i++){
-							data[r1.paramNames[i]] = arr[i];
-						}
-						r1.newData = data;
-						//路由进加载链
-						links.push(r1);
-						
-						//路径只剩下参数，直接赋值，返回
-						if(arr.length <= r1.paramNames.length){
-							return r1;
-						}
-						//剩下参数还有子路由路径
-						arr.splice(0,r1.paramNames.length);
-						path1 = '/' + arr.join('/');
-					}else{
-						//路由进加载链
-						links.push(r1);
-					}
-					
+					//查找子路由
+					var rsub;
 					if(DD.isArray(r1.routes)){
-						return find(r1.routes,path1);
+						rsub = find(r1.routes,path1);
+					}
+					if(rsub !== null){
+						return rsub;
+					}else{
+						// 查找参数匹配
+						if(r1.type === 'param'){
+							var len = arr.length<=r1.paramNames.length?arr.length:r1.paramNames.length;
+							var data = {};
+							// 取参数
+							for(var i=0;i<len;i++){
+								data[r1.paramNames[i]] = arr[i];
+							}
+							r1.newData = data;
+							//路径只剩下参数，直接赋值，返回
+							if(arr.length <= r1.paramNames.length){
+								return r1;
+							}
+							//剩下参数还有子路由路径
+							arr.splice(0,r1.paramNames.length);
+							path1 = '/' + arr.join('/');
+							//去参数后子路由查找
+							if(DD.isArray(r1.routes)){
+								return find(r1.routes,path1);
+							}
+						}
 					}
 				}
 				return null;
@@ -180,7 +185,6 @@
 			if(forward === undefined){
 				forward = true;
 			}
-
 			// 清空加载链
 			me.links = [];
 			var links = me.getRouteLink(path);
@@ -395,9 +399,10 @@
 		delete me.newData;
 		//获取module
 		if(DD.isString(me.module)){
-			me.module = DD.Module.get(me.module);
+			var mn = me.module;
+			me.module = DD.Module.get(mn);
 			if(me.module === undefined){
-				throw DD.Error.handle('notexist1',DD.words.module,me.module);	
+				throw DD.Error.handle('notexist1',DD.words.module,mn);	
 			}	
 		}
 		
@@ -408,7 +413,7 @@
 		}else{
 			pview = DD.App.view;
 		}
-		var routeEl = DD.get("[data-path='"+ me.getFullPath() +"']",false,pview);
+		var routeEl = DD.get("[path='"+ me.getFullPath() +"']",false,pview);
 		if(routeEl && routeEl.$routeConfig && routeEl.$routeConfig.active){
 			changeActive(routeEl);
 		}
@@ -542,6 +547,9 @@
 			}else if(router.switch && router.switch.style === 'fade'){ //淡出淡入
 
 			}else{
+				if(!view){
+					throw DD.Error.handle('notexist',DD.words.routeView);
+				}
 				me.module.view = view;
 				DD.empty(me.module.view);
 			}
@@ -601,7 +609,7 @@
             }
 
 			// 设置path
-			DD.attr(view,'data-path',value);
+			DD.attr(view,'path',value);
 
 			view.$routeConfig={
 				path:value,
@@ -619,6 +627,7 @@
 		        		changeActive(v);
 			   		}else{
 			   			DD.Router.start(view.$routeConfig['path']);
+
 			   		}
 			    }
 			});
@@ -639,7 +648,6 @@
 	   				active = true;
 	   			}
 			}
-
 			if(active){
 				//如果当前路径和routeview 的路径相同则返回
 				changeActive(view,path);
@@ -669,9 +677,15 @@
 		}
 
 		//当前active route view 存在，需要修改其active数据项为false
-		var pview = view.$module.view;
-		//当前active route view 存在，需要修改其active数据项为false
-		var oroute = DD.get("[role='activeroute']",false,pview);
+		//查找当前处于激活状态的路由元素
+		var oroute,pview;
+		for(pview=view.parentNode;!oroute && pview;pview=pview.parentNode){
+			oroute = DD.get("[role='activeroute']",false,pview);
+			//到达module view则不再查找
+			if(pview === view.$module.view){
+				break;
+			}
+		}
 		if(oroute){
 			oroute.removeAttribute('role');
 			var an=oroute.$routeConfig.active;
@@ -682,16 +696,16 @@
 				}
 			}
 		}
-		
 		//设置当前active route 数据
 		var active;
    		var an = view.$routeConfig.active;
    		if(an){
-   			var data = view.$getData().data;
-   			data.$set(an,true);
+   			var model = view.$getData();
+   			if(model.data){
+   				model.data.$set(an,true);
+   			}
    			DD.attr(view,'role','activeroute');
    		}
-
 	}
 
 	//创建router指令
@@ -700,6 +714,9 @@
 		preOrder:10,
 		init:function(value){
 		    this.$isRouterView = true;
+		},
+		handler:function(){
+			this.$module.routerView = this;
 		}
 	});
 

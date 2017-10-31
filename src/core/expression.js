@@ -58,7 +58,6 @@
             var result = [];
             var ind = 0;
             var r;
-            exprStr = exprStr.trim();
             while((r = reg.exec(exprStr)) !== null){
                 if(r.index>ind){
                     var s = exprStr.substring(ind,r.index);
@@ -79,7 +78,7 @@
             }
             //最后一个字符串
             if(ind < exprStr.length){
-                var s = exprStr.substr(ind).trim();
+                var s = exprStr.substr(ind);
                 if(!DD.isEmpty(s)){
                     result.push({
                         type:'string',
@@ -226,7 +225,7 @@
                 }
                 //最后一个
                 if(index1 < s.length){
-                    stack1.push(s.substr(index1).trim());
+                    stack1.push(s.substr(index1));
                 }
                 return[stack1,stack2];
             }

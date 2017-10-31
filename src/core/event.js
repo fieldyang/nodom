@@ -137,6 +137,31 @@
     }
 
     /**
+     * 绑定事件
+     * @param view      绑定的view,可不传
+     * @param eventName 事件名
+     */
+    Event.prototype.unbind=function(view){
+        var me = this;
+        
+        //触屏事件
+        if(DD.Event.TouchEvents[me.eventName]){
+            DD.Event.unregist(me);
+        }else{
+            //不是代理事件
+            if(!me.parent){
+                me.view.removeEventListener(me.eventName,me.handleEvent);
+            }else{  //代理事件
+                var ind = me.parent.events.indexOf(me);
+                if(ind !== -1){  //从父事件集合移除
+                    me.parent.events.splice(ind);
+                }
+            }
+            
+        }
+    }
+
+    /**
      * 
      * 代理事件
      *      events: {eobj:ev,handler:handler},eobj:事件对象，handler:事件方法
@@ -167,6 +192,7 @@
             pev.events.push(me);
         }
     }
+
     DD.Event = Event;
 
     /**

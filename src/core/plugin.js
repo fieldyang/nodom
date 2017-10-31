@@ -17,7 +17,10 @@
 		handler:function(){
 			var view = this;
 			var model = view.$getData();
-			view.$plugin.render(view);
+			//数据更改或强制渲染，则渲染插件
+			if(model && model.data && model.data.$isChanged(true) || view.$forceRender || view.$module.forceRender){
+				view.$plugin.render(view);	
+			}
 		}
 	});
 	DD.Plugin = {

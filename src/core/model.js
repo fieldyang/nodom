@@ -91,6 +91,51 @@
                 changed = true;
             }
             return [changed,data];
+        },
+        /**
+         * 数据是否修改
+         * @param deep  是否进行子孙节点判断
+         * @return      true/false
+         */
+        $isChanged:function(deep){
+            if(!deep){
+                return this.changed;
+            }else{
+                if(this.changed){
+                    return true;
+                }
+                return subChanged(this);
+            }
+
+            function subChanged(data){
+                if(DD.isObject(data)){  //对象
+                    var ps = DD.getOwnProps(data);
+                    //判断子对象是否修改
+                    for(var i=0;i<ps.length;i++){
+                        var o = data[ps[i]];
+                        if(DD.isObject(o) || DD.isArray(o)){
+                            if(o.changed){
+                                return true;
+                            }else{
+                                return subChanged(o);
+                            }
+                        }
+                    }
+                }else if(DD.isArray(data)){   //数组
+                    //判断数组元素是否修改
+                    for(var i=0;i<data.length;i++){
+                        var o = data[i];
+                        if(DD.isObject(o) || DD.isArray(o)){
+                            if(o.changed){
+                                return true;
+                            }else{
+                                return subChanged(o);
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
         }
     };
     
@@ -164,7 +209,9 @@
                     me.clean(data[p]);
                 }else{
                     //删除旧值
-                    delete data.$fields['$old_' + p];
+                    if(data.$fields){
+                        delete data.$fields['$old_' + p];    
+                    }
                 }
             });
         }else if(DD.isArray(data)){

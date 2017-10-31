@@ -78,7 +78,8 @@
             directive = view.$getDirective('validity');
         }
         
-        if(!view.$validity){
+        //首次渲染不执行
+        if(!view.$validity || !view.$rendered){
             return;
         }
 
@@ -87,6 +88,7 @@
             return;
         }
         var el = els[0];
+        
         var form = els[1];
 
         //如果form不同，则clear原有校验内容
@@ -95,7 +97,7 @@
             DD.$validity.form = form;
         }
 
-        
+
         //清除之前的校验提示
         if(view.nextSibling.$fromNode === view){
             DD.remove(view.nextSibling);
