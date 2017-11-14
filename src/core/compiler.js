@@ -57,6 +57,9 @@
                                     //textcontent 清空
                                     node.textContent = '';
                                 }
+                            }else{ //空字符串，直接移除
+                                el.removeChild(node);
+                                i--;
                             }
                             break;
                         case Node.COMMENT_NODE:     // 注释，需要移除

@@ -8,7 +8,7 @@
  * onLeave事件在路由切换时响应，如果存在多级路由切换，则从底一直到相同祖先路由，都会进行onLeave事件响应
  *  如：从/r1/r2/r3  到 /r1/r4/r5，则onLeave响应顺序为r3、r2
  *  onEnter事件则从上往下执行
- ß*/
+ */
 
 (function(){
 	DD.Router={
@@ -25,6 +25,7 @@
 		},
 		currentState:null,		// 当前状态
 		history:0,				// 历史节点长度
+		histories:[],			// 历史记录
 		currentPath:undefined, 	// 当前路径
 		/**
 		 * 添加路由
@@ -171,9 +172,8 @@
 		 * @param path  	路径
 		 # @param forward	true表示点击加载路由，false表示从history出来，默认true
 		 * @param replace 	替换当前路由的历史记录，默认false
-		 * @param force  	强制终止当前路由链，默认false
 		 */
-		start:function(path,forward,replace,force){
+		start:function(path,forward,replace){
 			var me = this;
 			path = path.trim();
 			if(DD.isEmpty(path)){
@@ -182,7 +182,7 @@
 			if(me.currentPath === path){
 				return true;
 			}
-			if(forward === undefined){
+			if(forward !== false){
 				forward = true;
 			}
 			// 清空加载链
@@ -267,12 +267,17 @@
 			me.loading = true;
 			//把路径pushstate
 			if(forward){
-				me.currentState = {path:path,index:me.history++,forward:true};
+				var absPath = getAbsPath(path);
 				//替换当前历史
 				if(replace){
-					history.replaceState(me.currentState,'', getAbsPath(path));
-				}else{
-					history.pushState(me.currentState,'', getAbsPath(path));	
+					history.replaceState(me.currentState,'', absPath);
+					if(me.histories.length>0){
+						me.histories[me.histories.length-1] = path;
+					}
+				}else{ //添加到历史
+					me.currentState = {path:path,index:me.history++,forward:true};
+					history.pushState(me.currentState,'', absPath);
+					me.histories.push(path);
 				}
 			}
 			setTimeout(function(){me.linkLoad();},0);
@@ -294,8 +299,50 @@
 					});
 				}
 			}
+		},
+		/**
+		 * 历史回退
+		 * @param path 		路径
+		 * @param direction 方向  0 history.back  1history.forward，默认0
+		 */
+		go:function(path,direction){
+			var me = this;
+			if(DD.isEmpty(path)){
+				throw DD.Error.handle('DD.Router.back','path',0,'string');
+			}
+			//默认0
+			direction = direction || 0;
+
+			var index = me.currentState.index;
+			var steps = 0;
+			var finded = false;
+			//forward
+			if(direction){
+				for(index++,steps++;index<me.histories.length;index++,steps++){
+					//找到则退出
+					if(me.histories[index] === path){
+						finded = true;
+						break;
+					}
+				}
+			}else{ //back
+				for(steps--,index--;index>=0;index--,steps--){
+					//找到则退出
+					if(me.histories[index] === path){
+						finded = true;
+						break;
+					}
+				}
+			}
+			if(finded){
+				history.go(steps);
+			}else{
+				//没找到则启动路径路由
+				me.start(path);
+			}
 		}
 	};
+	
 	
 	//处理popstate事件
 	window.addEventListener('popstate' , function(e){
@@ -680,7 +727,25 @@
 		//查找当前处于激活状态的路由元素
 		var oroute,pview;
 		for(pview=view.parentNode;!oroute && pview;pview=pview.parentNode){
-			oroute = DD.get("[role='activeroute']",false,pview);
+			// oroute = DD.get("[role='activeroute']",false,pview);
+			var rvs = DD.get('[path]',true,pview);
+			//找到数据为active的路由view
+			for(var i=0;i<rvs.length;i++){
+				var rv = rvs[i];
+				//自己不比较
+				if(rv === view){
+					continue;
+				}
+				//数据为true，则需要更换
+				if(rv && rv.$routeConfig.active){
+					var d = rv.$getData().data;
+					if(d && d[rv.$routeConfig.active]){
+						oroute = rv;
+						break;
+					}
+				}
+			}
+			
 			//到达module view则不再查找
 			if(pview === view.$module.view){
 				break;

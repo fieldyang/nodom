@@ -68,7 +68,6 @@
         //设置父module
         me.parent = config.parent;
         
-        
         //创建virtualDom
         me.virtualDom = DD.newEl('div');
         var pview;  //父module view
@@ -334,10 +333,8 @@
                 m.render();
             });
         }
-        
         //删除渲染子节点标志
         delete me.renderChildren;
-        
         //删除强制渲染标志
         delete me.forceRender;
         //路由链式加载

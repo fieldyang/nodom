@@ -189,7 +189,7 @@
                     }else{
                         stack1.push({
                             type:'field',       //字段
-                            src:item            //源
+                            src:item.trim()     //源
                         });    
                     }
                 }
@@ -264,7 +264,7 @@
                         }else{  //字段
                             pm = {
                                 type:'field',
-                                src:p
+                                src:p.trim()
                             }
                         }
                         params.push(pm);
