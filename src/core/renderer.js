@@ -10,7 +10,7 @@
 
 (function(){	
 	DD.Renderer = {
-		waitList : [], 		  	//待渲染列表
+		waitList : [],//待渲染列表
 		/**
 		 * 添加到渲染列表
 		 * @param module 		模块
@@ -57,11 +57,12 @@
 		},
 		/**
 		 * 渲染view
-		 * @param view 		待渲染的视图
-		 * @param module 	模块
+		 * @param view 			待渲染的视图
+		 * @param module 		模块
+		 * @param renderData 	渲染数据
 		 * @return 			true/false
 		 */
-		renderView:function(view,module){
+		renderView:function(view,module,renderData){
 			renderDom(view,true);
 			function renderDom(node,isRoot){
 	            //设置$module
@@ -82,6 +83,17 @@
 	                	DD.Directive.directives['model'].handler.call(node,null);
 	                }
 	                var model = node.$getData();
+	                //如果存在renderData，则设置强制渲染
+	                if(renderData){
+	                	if(node.$model){
+	                		node.$model.data = rendererData;
+	                	}else{
+	                		node.$model = {
+	                			data:rendererData
+	                		}
+	                	}
+	                	node.$setForceRender(true);
+	                }
 	                //数据改变，或node forceRender或module forceRender 进行渲染
 	                if(model.data && model.data.$changed || node.$forceRender || module.forceRender){
 	                	if(DD.isEl(node)){

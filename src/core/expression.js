@@ -216,6 +216,7 @@
                         var len = cacSign[i].length;
                         if(s.substr(ii,len) === cacSign[i]){
                             stack1.push(s.substr(index1,ii-index1).trim());
+                            // stack1.push(s.substr(index1,ii-index1));
                             stack2.push(cacSign[i]);
                             ii += len-1;        
                             index1 = ii+1;      //重新定位下次开始位置

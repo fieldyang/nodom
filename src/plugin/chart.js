@@ -1,4 +1,3 @@
-'use strict';
 (function(){
 	var LEGENDWORDLEN = 12;					//legend字符宽度
 	var WORDLEN = 10;						//普通字符宽度
@@ -1003,6 +1002,7 @@
 		var maxy = me.scaleValues.y.values[me.scaleValues.y.values.length-1];
 		
 		//如果为数字，则需要计算值和像素的兑换
+		var disx = 0;
 		if(me.category[0] === 'number'){
 			var vs = me.scaleValues.x.values;
 			disx = maxx - minx;

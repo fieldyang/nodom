@@ -411,6 +411,7 @@
         if(!model){
             model = view.$getData();
         }
+
         //如果没有数据，则不进行渲染
         if(model.data === undefined || !DD.isArray(model.data) || model.data.length === 0){
             return;

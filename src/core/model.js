@@ -99,9 +99,9 @@
          */
         $isChanged:function(deep){
             if(!deep){
-                return this.changed;
+                return this.$changed;
             }else{
-                if(this.changed){
+                if(this.$changed){
                     return true;
                 }
                 return subChanged(this);
@@ -114,7 +114,7 @@
                     for(var i=0;i<ps.length;i++){
                         var o = data[ps[i]];
                         if(DD.isObject(o) || DD.isArray(o)){
-                            if(o.changed){
+                            if(o.$changed){
                                 return true;
                             }else{
                                 return subChanged(o);
@@ -126,7 +126,7 @@
                     for(var i=0;i<data.length;i++){
                         var o = data[i];
                         if(DD.isObject(o) || DD.isArray(o)){
-                            if(o.changed){
+                            if(o.$changed){
                                 return true;
                             }else{
                                 return subChanged(o);

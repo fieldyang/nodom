@@ -49,17 +49,13 @@
                     switch(node.nodeType){
                         case Node.TEXT_NODE:        // 文本
                             // 处理文本表达式
-                            if(node.textContent.trim() !== ''){
+                            if(node.textContent !== ''){
                                 if(/\{\{.+\}\}?/.test(node.textContent)){
                                     module.needData = true;
                                     //处理表达式
                                     node.$exprs = DD.Expression.initExpr(node.textContent,module);
-                                    //textcontent 清空
                                     node.textContent = '';
                                 }
-                            }else{ //空字符串，直接移除
-                                el.removeChild(node);
-                                i--;
                             }
                             break;
                         case Node.COMMENT_NODE:     // 注释，需要移除

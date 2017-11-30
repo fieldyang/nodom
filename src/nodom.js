@@ -1610,7 +1610,7 @@ DD.config = {
                     }else{
                         stack1.push({
                             type:'field',       //字段
-                            src:item            //源
+                            src:item.trim()     //源
                         });    
                     }
                 }
@@ -1637,6 +1637,7 @@ DD.config = {
                         var len = cacSign[i].length;
                         if(s.substr(ii,len) === cacSign[i]){
                             stack1.push(s.substr(index1,ii-index1).trim());
+                            // stack1.push(s.substr(index1,ii-index1));
                             stack2.push(cacSign[i]);
                             ii += len-1;        
                             index1 = ii+1;      //重新定位下次开始位置
@@ -1685,7 +1686,7 @@ DD.config = {
                         }else{  //字段
                             pm = {
                                 type:'field',
-                                src:p
+                                src:p.trim()
                             }
                         }
                         params.push(pm);
@@ -2361,6 +2362,7 @@ DD.config = {
         if(!model){
             model = view.$getData();
         }
+
         //如果没有数据，则不进行渲染
         if(model.data === undefined || !DD.isArray(model.data) || model.data.length === 0){
             return;
@@ -3142,9 +3144,9 @@ DD.config = {
          */
         $isChanged:function(deep){
             if(!deep){
-                return this.changed;
+                return this.$changed;
             }else{
-                if(this.changed){
+                if(this.$changed){
                     return true;
                 }
                 return subChanged(this);
@@ -3157,7 +3159,7 @@ DD.config = {
                     for(var i=0;i<ps.length;i++){
                         var o = data[ps[i]];
                         if(DD.isObject(o) || DD.isArray(o)){
-                            if(o.changed){
+                            if(o.$changed){
                                 return true;
                             }else{
                                 return subChanged(o);
@@ -3169,7 +3171,7 @@ DD.config = {
                     for(var i=0;i<data.length;i++){
                         var o = data[i];
                         if(DD.isObject(o) || DD.isArray(o)){
-                            if(o.changed){
+                            if(o.$changed){
                                 return true;
                             }else{
                                 return subChanged(o);
@@ -3454,7 +3456,6 @@ DD.config = {
         //设置父module
         me.parent = config.parent;
         
-        
         //创建virtualDom
         me.virtualDom = DD.newEl('div');
         var pview;  //父module view
@@ -3497,12 +3498,10 @@ DD.config = {
             }
             //编译
             me.compile();
-            DD.Renderer.add(me);
-
+            
             //数据为空，则使用用空对象
             data = data || {};
             new DD.Model({data:data,module:me});
-            
             //子模块初始化
             if(DD.isArray(config.modules)){
                 config.modules.forEach(function(mc){
@@ -3521,6 +3520,8 @@ DD.config = {
             }
             //删除initConfig
             delete me.initConfig;
+            //加入渲染队列
+            DD.Renderer.add(me);
         });
         me.inited = true;
     }
@@ -3674,6 +3675,7 @@ DD.config = {
         if(!me.view){
             return;
         }
+
         //设置模块view为view
         if(!me.view.$isView){
             DD.merge(me.view,DD.extendElementConfig);
@@ -3697,6 +3699,7 @@ DD.config = {
             if(!me.rendered && DD.isFunction(me.onFirstRender)){
                 me.onFirstRender.call(me.model);
             }
+            
             //设置已渲染标志
             me.rendered = true;
             //首次渲染，需要渲染子模块
@@ -3712,7 +3715,6 @@ DD.config = {
         if(me.model){
             me.model.clean();
         }
-        
         //渲染子节点
         if(me.renderChildren){
             me.modules.forEach(function(m){
@@ -3720,10 +3722,8 @@ DD.config = {
                 m.render();
             });
         }
-        
         //删除渲染子节点标志
         delete me.renderChildren;
-        
         //删除强制渲染标志
         delete me.forceRender;
         //路由链式加载
@@ -4072,7 +4072,6 @@ DD.extendElementConfig = {
                 data = me.$module.model.data;
             }
         }
-
             
         return {
             data:data,
@@ -4113,7 +4112,7 @@ DD.extendElementConfig = {
 
 (function(){	
 	DD.Renderer = {
-		waitList : [], 		  	//待渲染列表
+		waitList : [],//待渲染列表
 		/**
 		 * 添加到渲染列表
 		 * @param module 		模块
@@ -4160,11 +4159,12 @@ DD.extendElementConfig = {
 		},
 		/**
 		 * 渲染view
-		 * @param view 		待渲染的视图
-		 * @param module 	模块
+		 * @param view 			待渲染的视图
+		 * @param module 		模块
+		 * @param renderData 	渲染数据
 		 * @return 			true/false
 		 */
-		renderView:function(view,module){
+		renderView:function(view,module,renderData){
 			renderDom(view,true);
 			function renderDom(node,isRoot){
 	            //设置$module
@@ -4185,6 +4185,17 @@ DD.extendElementConfig = {
 	                	DD.Directive.directives['model'].handler.call(node,null);
 	                }
 	                var model = node.$getData();
+	                //如果存在renderData，则设置强制渲染
+	                if(renderData){
+	                	if(node.$model){
+	                		node.$model.data = rendererData;
+	                	}else{
+	                		node.$model = {
+	                			data:rendererData
+	                		}
+	                	}
+	                	node.$setForceRender(true);
+	                }
 	                //数据改变，或node forceRender或module forceRender 进行渲染
 	                if(model.data && model.data.$changed || node.$forceRender || module.forceRender){
 	                	if(DD.isEl(node)){
@@ -4373,12 +4384,11 @@ DD.extendElementConfig = {
                     switch(node.nodeType){
                         case Node.TEXT_NODE:        // 文本
                             // 处理文本表达式
-                            if(node.textContent.trim() !== ''){
+                            if(node.textContent !== ''){
                                 if(/\{\{.+\}\}?/.test(node.textContent)){
                                     module.needData = true;
                                     //处理表达式
                                     node.$exprs = DD.Expression.initExpr(node.textContent,module);
-                                    //textcontent 清空
                                     node.textContent = '';
                                 }
                             }

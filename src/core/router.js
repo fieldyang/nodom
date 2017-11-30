@@ -222,7 +222,7 @@
 					//删除r对应module的view
 					clearView(r.module);
 					if(DD.isFunction(r.onLeave)){
-						r.onLeave();
+						r.onLeave(r.module.model);
 					}
 					//移除不要的节点
 					me.currentLinks.pop();
@@ -489,7 +489,7 @@
 			me.module.setForceRender(true);
 			//调用onEnter钩子
 			if(DD.isFunction(me.onEnter)){
-				me.onEnter(me.module);
+				me.onEnter(me.module.model);
 			}
 
 			if(me.parent){

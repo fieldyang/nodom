@@ -110,12 +110,10 @@
             }
             //编译
             me.compile();
-            DD.Renderer.add(me);
-
+            
             //数据为空，则使用用空对象
             data = data || {};
             new DD.Model({data:data,module:me});
-            
             //子模块初始化
             if(DD.isArray(config.modules)){
                 config.modules.forEach(function(mc){
@@ -134,6 +132,8 @@
             }
             //删除initConfig
             delete me.initConfig;
+            //加入渲染队列
+            DD.Renderer.add(me);
         });
         me.inited = true;
     }
@@ -287,6 +287,7 @@
         if(!me.view){
             return;
         }
+
         //设置模块view为view
         if(!me.view.$isView){
             DD.merge(me.view,DD.extendElementConfig);
@@ -310,6 +311,7 @@
             if(!me.rendered && DD.isFunction(me.onFirstRender)){
                 me.onFirstRender.call(me.model);
             }
+            
             //设置已渲染标志
             me.rendered = true;
             //首次渲染，需要渲染子模块
@@ -325,7 +327,6 @@
         if(me.model){
             me.model.clean();
         }
-        
         //渲染子节点
         if(me.renderChildren){
             me.modules.forEach(function(m){

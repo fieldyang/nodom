@@ -107,7 +107,6 @@ DD.extendElementConfig = {
                 data = me.$module.model.data;
             }
         }
-
             
         return {
             data:data,
